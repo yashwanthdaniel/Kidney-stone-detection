@@ -1,0 +1,19 @@
+@"
+venv/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+.streamlit/secrets.toml
+
+dataset/
+data/
+
+*.pt
+*.pth
+*.onnx
+
+runs/
+outputs/
+"@ | Out-File -Encoding utf8 .gitignore

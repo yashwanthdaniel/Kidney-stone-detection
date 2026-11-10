@@ -1,0 +1,47 @@
+{
+  "architecture": "efficientnet_b0",
+  "epochs": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "train_loss": [
+    0.6588,
+    0.5258,
+    0.4,
+    0.2956,
+    0.2354
+  ],
+  "train_acc": [
+    60.7,
+    76.2,
+    82.7,
+    87.7,
+    91.2
+  ],
+  "val_loss": [
+    0.6245,
+    0.5035,
+    0.3579,
+    0.4067,
+    0.279
+  ],
+  "val_acc": [
+    68.4,
+    74.0,
+    82.4,
+    80.8,
+    85.2
+  ],
+  "best_epoch": 5,
+  "best_val_loss": 0.279,
+  "best_val_acc": 85.2,
+  "stopped_early": false,
+  "timestamp": "2026-10-26T19:51:09.032228",
+  "device": "cpu",
+  "total_train_samples": 1000,
+  "total_val_samples": 250,
+  "duration_seconds": 221.4
+}

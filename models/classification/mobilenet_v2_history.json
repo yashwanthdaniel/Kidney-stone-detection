@@ -1,0 +1,47 @@
+{
+  "architecture": "mobilenet_v2",
+  "epochs": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "train_loss": [
+    0.6617,
+    0.576,
+    0.4722,
+    0.3636,
+    0.2853
+  ],
+  "train_acc": [
+    60.5,
+    73.25,
+    77.83,
+    85.17,
+    88.5
+  ],
+  "val_loss": [
+    0.6571,
+    0.671,
+    0.6269,
+    0.7694,
+    0.4568
+  ],
+  "val_acc": [
+    63.67,
+    65.67,
+    66.0,
+    62.67,
+    80.33
+  ],
+  "best_epoch": 5,
+  "best_val_loss": 0.4568,
+  "best_val_acc": 80.33,
+  "stopped_early": false,
+  "timestamp": "2026-10-26T19:34:10.314634",
+  "device": "cpu",
+  "total_train_samples": 1200,
+  "total_val_samples": 300,
+  "duration_seconds": 223.0
+}

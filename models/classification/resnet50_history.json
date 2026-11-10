@@ -1,0 +1,47 @@
+{
+  "architecture": "resnet50",
+  "epochs": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "train_loss": [
+    0.6401,
+    0.4558,
+    0.2721,
+    0.1888,
+    0.1419
+  ],
+  "train_acc": [
+    63.0,
+    79.5,
+    88.5,
+    92.7,
+    94.7
+  ],
+  "val_loss": [
+    0.6124,
+    0.6585,
+    0.3453,
+    0.2505,
+    0.19
+  ],
+  "val_acc": [
+    67.2,
+    67.6,
+    88.0,
+    92.0,
+    90.8
+  ],
+  "best_epoch": 5,
+  "best_val_loss": 0.19,
+  "best_val_acc": 90.8,
+  "stopped_early": false,
+  "timestamp": "2026-10-26T19:44:25.113446",
+  "device": "cpu",
+  "total_train_samples": 1000,
+  "total_val_samples": 250,
+  "duration_seconds": 399.7
+}

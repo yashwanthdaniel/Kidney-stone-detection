@@ -1,0 +1,155 @@
+{
+  "models": {
+    "mobilenet_v2": {
+      "architecture": "mobilenet_v2",
+      "evaluated": true,
+      "metrics": {
+        "accuracy": 0.7533,
+        "precision": 0.9106,
+        "recall_sensitivity": 0.6763,
+        "specificity": 0.8857,
+        "f1_score": 0.7762,
+        "roc_auc": 0.848,
+        "sample_count": 381,
+        "confusion_matrix": {
+          "tn": 124,
+          "fp": 16,
+          "fn": 78,
+          "tp": 163,
+          "matrix": [
+            [
+              124,
+              16
+            ],
+            [
+              78,
+              163
+            ]
+          ],
+          "labels": [
+            "Non-Stone",
+            "Stone"
+          ]
+        }
+      },
+      "avg_latency_ms": 78.22,
+      "model_size_mb": 8.73,
+      "test_samples": 381,
+      "split_used": "test.csv"
+    },
+    "resnet50": {
+      "architecture": "resnet50",
+      "evaluated": true,
+      "metrics": {
+        "accuracy": 0.916,
+        "precision": 0.9729,
+        "recall_sensitivity": 0.8921,
+        "specificity": 0.9571,
+        "f1_score": 0.9307,
+        "roc_auc": 0.9635,
+        "sample_count": 381,
+        "confusion_matrix": {
+          "tn": 134,
+          "fp": 6,
+          "fn": 26,
+          "tp": 215,
+          "matrix": [
+            [
+              134,
+              6
+            ],
+            [
+              26,
+              215
+            ]
+          ],
+          "labels": [
+            "Non-Stone",
+            "Stone"
+          ]
+        }
+      },
+      "avg_latency_ms": 167.45,
+      "model_size_mb": 89.99,
+      "test_samples": 381,
+      "split_used": "test.csv"
+    },
+    "efficientnet_b0": {
+      "architecture": "efficientnet_b0",
+      "evaluated": true,
+      "metrics": {
+        "accuracy": 0.8714,
+        "precision": 0.9211,
+        "recall_sensitivity": 0.8714,
+        "specificity": 0.8714,
+        "f1_score": 0.8955,
+        "roc_auc": 0.9385,
+        "sample_count": 381,
+        "confusion_matrix": {
+          "tn": 122,
+          "fp": 18,
+          "fn": 31,
+          "tp": 210,
+          "matrix": [
+            [
+              122,
+              18
+            ],
+            [
+              31,
+              210
+            ]
+          ],
+          "labels": [
+            "Non-Stone",
+            "Stone"
+          ]
+        }
+      },
+      "avg_latency_ms": 65.64,
+      "model_size_mb": 15.58,
+      "test_samples": 381,
+      "split_used": "test.csv"
+    }
+  },
+  "ensemble": {
+    "evaluated": true,
+    "architecture": "Ensemble (Averaged)",
+    "contributing_models": [
+      "mobilenet_v2",
+      "resnet50",
+      "efficientnet_b0"
+    ],
+    "metrics": {
+      "accuracy": 0.9265,
+      "precision": 0.9819,
+      "recall_sensitivity": 0.9004,
+      "specificity": 0.9714,
+      "f1_score": 0.9394,
+      "roc_auc": 0.9659,
+      "sample_count": 381,
+      "confusion_matrix": {
+        "tn": 136,
+        "fp": 4,
+        "fn": 24,
+        "tp": 217,
+        "matrix": [
+          [
+            136,
+            4
+          ],
+          [
+            24,
+            217
+          ]
+        ],
+        "labels": [
+          "Non-Stone",
+          "Stone"
+        ]
+      }
+    },
+    "test_samples": 381
+  },
+  "timestamp": "2026-10-27 21:31:33"
+}
