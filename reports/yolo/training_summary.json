@@ -1,0 +1,14 @@
+{
+  "model": "yolov8n",
+  "epochs_configured": 25,
+  "batch_size": 16,
+  "img_size": 640,
+  "optimizer": "AdamW",
+  "patience": 8,
+  "training_duration_seconds": 199.0,
+  "training_duration_minutes": 3.32,
+  "device": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "best_checkpoint": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\models\\detection\\best.pt",
+  "last_checkpoint": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\models\\detection\\last.pt",
+  "timestamp": "2026-11-10T21:21:52"
+}

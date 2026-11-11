@@ -1,177 +1,230 @@
 """
-Weakly-Supervised YOLOv8 Dataset Builder & Detection Trainer
-Extracts hyperdense radiopaque stone candidate bounding boxes from confirmed
-stone CT slices, creates a standardized YOLO dataset, and trains YOLOv8.
-Saves the resulting checkpoint to models/detection/best.pt.
+YOLOv8 Dataset Preparation & Assembly Engine for Kidney Stone Detection
+Prepares standardized YOLOv8 directory structure from patient-isolated splits,
+copies images, pairs existing YOLO-format bounding box annotations,
+creates empty label files for negative background slices (Non-Stone),
+generates data.yaml, and strictly verifies patient-level isolation.
+
+IMPORTANT: Does NOT fabricate bounding boxes or assume whole images are stones.
+Requires genuine bounding-box annotations (LabelImg, CVAT, or YOLO format .txt).
 """
 from pathlib import Path
+from typing import Dict, Any, Optional, List, Tuple
 import shutil
-import cv2
-import numpy as np
-import pandas as pd
-from PIL import Image
+import sys
 import yaml
+import pandas as pd
 
-from config.settings import SPLITS_DIR, DETECTION_MODELS_DIR, BASE_DIR
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-YOLO_DATASET_DIR = BASE_DIR / "data" / "yolo_dataset"
+from config.settings import (
+    BASE_DIR,
+    DATA_DIR,
+    SPLITS_DIR,
+    YOLO_DATASET_DIR,
+    YOLO_DATA_YAML,
+    SUPPORTED_IMAGE_EXTS,
+)
+from training.split_dataset import create_safe_dataset_split, load_split_manifest
+from training.validate_yolo_dataset import validate_yolo_dataset, print_validation_report
 
 
-def extract_stone_bounding_boxes(image_path: str):
+def discover_annotations_directory(candidate_dir: Optional[Path] = None) -> Optional[Path]:
     """
-    Detect hyperdense focal calcifications in CT scan slice.
-    Returns list of [x_center, y_center, width, height] normalized.
+    Search for directory containing existing YOLO .txt annotation files.
     """
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        return []
+    search_paths: List[Path] = []
+    if candidate_dir:
+        search_paths.append(Path(candidate_dir))
 
-    h, w = img.shape
-    # Kidney stones typically have high Hounsfield radiodensity (brightest pixels)
-    # Exclude outside borders/scanner markers by cropping center 85%
-    mask_roi = np.zeros_like(img)
-    margin_y = int(h * 0.08)
-    margin_x = int(w * 0.08)
-    mask_roi[margin_y:h - margin_y, margin_x:w - margin_x] = 255
+    search_paths.extend([
+        BASE_DIR / "dataset" / "labels",
+        BASE_DIR / "dataset" / "Original" / "labels",
+        BASE_DIR / "dataset" / "annotations",
+        DATA_DIR / "annotations",
+        BASE_DIR / "annotations",
+    ])
 
-    # Target top 0.5% - 2% intensity threshold
-    p98 = np.percentile(img[mask_roi > 0], 98.5) if np.any(mask_roi > 0) else 200
-    thresh_val = max(180, p98)
-
-    _, binary = cv2.threshold(img, thresh_val, 255, cv2.THRESH_BINARY)
-    binary = cv2.bitwise_and(binary, mask_roi)
-
-    # Morphological opening to remove isolated noise pixels
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-
-    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    boxes = []
-
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        # Filter realistic kidney stone size (between 15 px^2 and 2500 px^2)
-        if 15 <= area <= 2500:
-            bx, by, bw, bh = cv2.boundingRect(cnt)
-            # Add slight padding around the detected calcification
-            pad = 6
-            bx1 = max(0, bx - pad)
-            by1 = max(0, by - pad)
-            bx2 = min(w, bx + bw + pad)
-            by2 = min(h, by + bh + pad)
-
-            # Convert to normalized YOLO coordinates: x_c, y_c, bw, bh
-            xc = ((bx1 + bx2) / 2.0) / w
-            yc = ((by1 + by2) / 2.0) / h
-            norm_w = (bx2 - bx1) / w
-            norm_h = (by2 - by1) / h
-
-            boxes.append([xc, yc, norm_w, norm_h])
-
-    return boxes
+    for p in search_paths:
+        if p.exists() and p.is_dir():
+            txt_files = list(p.glob("*.txt"))
+            if len(txt_files) > 0:
+                return p
+    return None
 
 
-def prepare_yolo_dataset(max_train_samples: int = 500, max_val_samples: int = 100):
+def prepare_yolo_dataset(
+    annotation_source_dir: Optional[Path] = None,
+    output_dir: Optional[Path] = None,
+    force_rebuild: bool = True,
+) -> Dict[str, Any]:
     """
-    Build train/val YOLO directories and label files from split manifests.
+    Assemble the complete YOLO dataset from classification splits and annotations:
+    1. Ensure train/val/test splits exist with strict patient isolation.
+    2. Build data/yolo_dataset/images/{train,val,test} and labels/{train,val,test}.
+    3. Copy images.
+    4. For Stone images, copy matching YOLO .txt label from annotation source.
+    5. For Non-Stone images, generate empty .txt files (negative background samples).
+    6. Generate data.yaml.
+    7. Execute validation checks.
     """
-    print("[1/3] Preparing YOLOv8 dataset directory structure...")
-    for split in ["train", "val"]:
-        (YOLO_DATASET_DIR / "images" / split).mkdir(parents=True, exist_ok=True)
-        (YOLO_DATASET_DIR / "labels" / split).mkdir(parents=True, exist_ok=True)
+    target_root = Path(output_dir) if output_dir else YOLO_DATASET_DIR
+    anno_dir = discover_annotations_directory(annotation_source_dir)
 
-    train_csv = SPLITS_DIR / "train.csv"
-    val_csv = SPLITS_DIR / "val.csv"
+    print("=" * 70)
+    print("  YOLOv8 Dataset Preparation Engine — Kidney Stone Detection")
+    print("=" * 70)
+    print(f"  Target Directory      : {target_root}")
+    print(f"  Annotation Source Dir : {anno_dir if anno_dir else 'None found (Checking dataset dirs)'}")
 
-    splits_info = [("train", train_csv, max_train_samples), ("val", val_csv, max_val_samples)]
+    # 1. Verify / generate classification splits
+    manifest = load_split_manifest(SPLITS_DIR)
+    if not manifest:
+        print("  Generating patient-isolated splits (70% train / 15% val / 15% test)...")
+        manifest = create_safe_dataset_split()
 
-    for split_name, csv_path, max_samples in splits_info:
-        df = pd.read_csv(csv_path)
-        # Sample both stone and non-stone images
-        stone_df = df[df["class"] == "Stone"]
-        nonstone_df = df[df["class"] == "Non-Stone"]
+    splits = ["train", "val", "test"]
 
-        n_stone = min(len(stone_df), max_samples // 2)
-        n_ns = min(len(nonstone_df), max_samples // 2)
+    # 2. Reset or ensure directories
+    if force_rebuild and target_root.exists():
+        for split in splits:
+            img_s = target_root / "images" / split
+            lbl_s = target_root / "labels" / split
+            if img_s.exists():
+                shutil.rmtree(img_s)
+            if lbl_s.exists():
+                shutil.rmtree(lbl_s)
 
-        sample_df = pd.concat([
-            stone_df.sample(n=n_stone, random_state=42),
-            nonstone_df.sample(n=n_ns, random_state=42),
-        ]).reset_index(drop=True)
+    for split in splits:
+        (target_root / "images" / split).mkdir(parents=True, exist_ok=True)
+        (target_root / "labels" / split).mkdir(parents=True, exist_ok=True)
 
-        print(f"  Processing {split_name} partition ({len(sample_df)} slices)...")
-
-        for idx, row in sample_df.iterrows():
-            img_src = Path(row["path"])
-            if not img_src.exists():
-                continue
-
-            dest_img = YOLO_DATASET_DIR / "images" / split_name / f"{split_name}_{idx}_{img_src.name}"
-            dest_lbl = YOLO_DATASET_DIR / "labels" / split_name / f"{dest_img.stem}.txt"
-
-            shutil.copy(img_src, dest_img)
-
-            if row["class"] == "Stone":
-                boxes = extract_stone_bounding_boxes(str(img_src))
-                with open(dest_lbl, "w") as f:
-                    for b in boxes:
-                        # class 0: Kidney Stone
-                        f.write(f"0 {b[0]:.6f} {b[1]:.6f} {b[2]:.6f} {b[3]:.6f}\n")
-            else:
-                # Background negative sample
-                dest_lbl.touch()
-
-    # Create dataset YAML
-    yaml_content = {
-        "path": str(YOLO_DATASET_DIR.resolve()),
-        "train": str((YOLO_DATASET_DIR / "images" / "train").resolve()),
-        "val": str((YOLO_DATASET_DIR / "images" / "val").resolve()),
-        "names": {0: "Kidney Stone"},
+    # 3. Process each split according to CSV
+    stats: Dict[str, Any] = {
+        split: {
+            "images_copied": 0,
+            "stone_annotated": 0,
+            "stone_missing_anno": 0,
+            "non_stone_negative": 0,
+        }
+        for split in splits
     }
 
-    yaml_path = YOLO_DATASET_DIR / "dataset.yaml"
-    with open(yaml_path, "w") as f:
-        yaml.dump(yaml_content, f, sort_keys=False)
+    missing_stone_annotations: List[str] = []
+    annotated_stone_count = 0
 
-    print(f"[2/3] Dataset YAML successfully created at: {yaml_path}")
-    return yaml_path
+    for split in splits:
+        csv_file = SPLITS_DIR / f"{split}.csv"
+        if not csv_file.exists():
+            raise FileNotFoundError(f"Required split CSV not found: {csv_file}")
 
+        df = pd.read_csv(csv_file)
+        dest_img_dir = target_root / "images" / split
+        dest_lbl_dir = target_root / "labels" / split
 
-def train_yolo(yaml_path: Path, epochs: int = 8, batch_size: int = 16):
-    """
-    Train YOLOv8n detector and copy best checkpoint to models/detection/best.pt.
-    """
-    print("[3/3] Training YOLOv8 object detector...")
-    from ultralytics import YOLO
+        for _, row in df.iterrows():
+            src_img_path = Path(row["path"])
+            if not src_img_path.exists():
+                continue
 
-    DETECTION_MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    model = YOLO("yolov8n.pt")
+            dest_img_path = dest_img_dir / src_img_path.name
+            dest_lbl_path = dest_lbl_dir / f"{src_img_path.stem}.txt"
 
-    results = model.train(
-        data=str(yaml_path),
-        epochs=epochs,
-        batch=batch_size,
-        imgsz=384,
-        project=str(DETECTION_MODELS_DIR / "runs"),
-        name="kidney_stone_detector",
-        exist_ok=True,
-        verbose=True,
-        device="cpu",
-    )
+            # Copy image
+            if not dest_img_path.exists():
+                shutil.copy2(src_img_path, dest_img_path)
+            stats[split]["images_copied"] += 1
 
-    # Copy best.pt to standard path
-    trained_best = DETECTION_MODELS_DIR / "runs" / "kidney_stone_detector" / "weights" / "best.pt"
-    target_best = DETECTION_MODELS_DIR / "best.pt"
+            cls_name = row["class"]
 
-    if trained_best.exists():
-        shutil.copy(trained_best, target_best)
-        print(f"\n[SUCCESS] YOLOv8 trained and saved to: {target_best}")
-        print(f"File size: {round(target_best.stat().st_size / (1024**2), 2)} MB")
-        return target_best
-    else:
-        raise FileNotFoundError(f"Expected checkpoint not found at: {trained_best}")
+            if cls_name == "Stone":
+                # Look for matching label file
+                found_label: Optional[Path] = None
+
+                # Check annotation directory if discovered
+                if anno_dir:
+                    candidate = anno_dir / f"{src_img_path.stem}.txt"
+                    if candidate.exists():
+                        found_label = candidate
+
+                # Check beside original image or in parent's labels folder
+                if not found_label:
+                    beside = src_img_path.parent / f"{src_img_path.stem}.txt"
+                    sibling_labels = src_img_path.parent.parent / "labels" / f"{src_img_path.stem}.txt"
+                    if beside.exists():
+                        found_label = beside
+                    elif sibling_labels.exists():
+                        found_label = sibling_labels
+
+                if found_label:
+                    shutil.copy2(found_label, dest_lbl_path)
+                    stats[split]["stone_annotated"] += 1
+                    annotated_stone_count += 1
+                else:
+                    # Missing genuine annotation - do not invent bounding boxes!
+                    stats[split]["stone_missing_anno"] += 1
+                    missing_stone_annotations.append(src_img_path.name)
+                    # Do not create fake label file
+
+            else:
+                # Non-Stone: Create valid empty negative label file
+                with open(dest_lbl_path, "w", encoding="utf-8") as f:
+                    pass  # 0 bytes, clean negative sample
+                stats[split]["non_stone_negative"] += 1
+
+    # 4. Generate data.yaml (compatible with Ultralytics YOLOv8)
+    # Using relative paths from YOLO_DATASET_DIR or absolute paths
+    yaml_dict = {
+        "path": str(target_root.resolve()).replace("\\", "/"),
+        "train": "images/train",
+        "val": "images/val",
+        "test": "images/test",
+        "names": {
+            0: "kidney_stone",
+        },
+    }
+
+    yaml_file = target_root / "data.yaml"
+    with open(yaml_file, "w", encoding="utf-8") as f:
+        yaml.dump(yaml_dict, f, sort_keys=False)
+
+    print(f"\n  [✔] data.yaml created at: {yaml_file}")
+
+    # 5. Run validation
+    validation_rep = validate_yolo_dataset(target_root, yaml_file, verify_image_files=False)
+
+    print("-" * 70)
+    print("  Preparation Summary:")
+    for split in splits:
+        s = stats[split]
+        print(
+            f"    • {split.upper():<5} : {s['images_copied']:>3} images | "
+            f"Annotated Stones: {s['stone_annotated']:>3} | "
+            f"Missing Stone Annos: {s['stone_missing_anno']:>3} | "
+            f"Negative (Non-Stone): {s['non_stone_negative']:>3}"
+        )
+
+    print("-" * 70)
+    if missing_stone_annotations:
+        print(f"\n  ⚠️ NOTICE: {len(missing_stone_annotations)} stone slice(s) currently lack bounding-box annotations.")
+        print("  In accordance with medical AI safety, bounding boxes are NEVER fabricated.")
+        print("  Use LabelImg or CVAT to create YOLO format .txt annotations for stone images.")
+        print("  Place them in 'dataset/labels/' and rerun preparation.")
+
+    return {
+        "success": validation_rep["valid"],
+        "dataset_root": str(target_root),
+        "data_yaml": str(yaml_file),
+        "annotated_stone_count": annotated_stone_count,
+        "missing_stone_annotations_count": len(missing_stone_annotations),
+        "missing_examples": missing_stone_annotations[:10],
+        "stats": stats,
+        "validation_report": validation_rep,
+    }
 
 
 if __name__ == "__main__":
-    y_yaml = prepare_yolo_dataset(max_train_samples=400, max_val_samples=100)
-    train_yolo(y_yaml, epochs=6, batch_size=16)
+    result = prepare_yolo_dataset()
+    print_validation_report(result["validation_report"])

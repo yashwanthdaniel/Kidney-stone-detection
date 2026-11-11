@@ -157,7 +157,8 @@ if uploaded_file is not None:
 
     # 4. YOLO Object Detection Section
     st.subheader("🎯 YOLOv8 Object Detection (Localization)")
-    det_res = run_yolo_detection(image)
+    det_conf_slider = st.slider("YOLO Confidence Threshold", min_value=0.10, max_value=0.90, value=0.25, step=0.05, key="analysis_yolo_conf")
+    det_res = run_yolo_detection(image, conf_threshold=det_conf_slider)
 
     if det_res.get("available"):
         d_col1, d_col2 = st.columns([1, 1])
@@ -165,10 +166,16 @@ if uploaded_file is not None:
             if det_res.get("annotated_image"):
                 st.image(det_res["annotated_image"], caption="YOLOv8 Detection Overlays", use_container_width=True)
         with d_col2:
-            st.success(f"Detected {det_res.get('num_detections', 0)} region(s).")
-            st.json(det_res.get("detections", []))
+            num_stones = det_res.get("num_detections", 0)
+            st.success(f"Detected {num_stones} stone region(s) in {det_res.get('inference_time_ms', 0)} ms on {det_res.get('device', 'GPU')}.")
+            if num_stones > 0:
+                st.markdown("##### Detected Stone Regions:")
+                for idx, det in enumerate(det_res.get("detections", []), 1):
+                    st.write(f"- **Stone #{idx}:** Confidence: `{round(det['confidence']*100, 1)}%` | Box: `{det['box_xyxy_pixels']}` | Size: `{det['width_px']}x{det['height_px']} px`")
+            else:
+                st.info("No kidney stones localized above the selected confidence threshold.")
     else:
-        st.info("ℹ️ Detection model not trained or unavailable. Classification dataset does not contain bounding-box annotations.")
+        st.info("ℹ️ YOLOv8 detection model not trained or unavailable. Checkpoint `models/detection/best.pt` not found. Provide bounding-box annotations to train in Page 8.")
 
     st.markdown("---")
 

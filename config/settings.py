@@ -16,12 +16,15 @@ NUM_CLASSES = 2
 # Directory Paths
 DATA_DIR = BASE_DIR / "data"
 SPLITS_DIR = DATA_DIR / "splits"
+YOLO_DATASET_DIR = DATA_DIR / "yolo_dataset"
+YOLO_DATA_YAML = YOLO_DATASET_DIR / "data.yaml"
 MODELS_DIR = BASE_DIR / "models"
 CLASSIFICATION_MODELS_DIR = MODELS_DIR / "classification"
 DETECTION_MODELS_DIR = MODELS_DIR / "detection"
 DATABASE_DIR = BASE_DIR / "backend" / "database"
 DATABASE_PATH = DATABASE_DIR / "research_history.db"
 REPORTS_DIR = BASE_DIR / "reports"
+YOLO_REPORTS_DIR = REPORTS_DIR / "yolo"
 
 # Model filenames
 MODEL_FILENAMES = {
@@ -51,11 +54,13 @@ DEFAULT_RANDOM_SEED = 42
 for directory in [
     DATA_DIR,
     SPLITS_DIR,
+    YOLO_DATASET_DIR,
     MODELS_DIR,
     CLASSIFICATION_MODELS_DIR,
     DETECTION_MODELS_DIR,
     DATABASE_DIR,
     REPORTS_DIR,
+    YOLO_REPORTS_DIR,
 ]:
     directory.mkdir(parents=True, exist_ok=True)
 

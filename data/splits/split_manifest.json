@@ -1,0 +1,60 @@
+{
+  "dataset_root": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\dataset",
+  "random_seed": 42,
+  "train_ratio": 0.7,
+  "val_ratio": 0.15,
+  "test_ratio": 0.15,
+  "total_groups": 300,
+  "include_augmented_in_val_test": false,
+  "split_group_counts": {
+    "train": 210,
+    "val": 45,
+    "test": 45
+  },
+  "patient_counts": {
+    "train": 210,
+    "val": 45,
+    "test": 45
+  },
+  "leakage_verification": {
+    "patient_train_val_overlap": 0,
+    "patient_train_test_overlap": 0,
+    "patient_val_test_overlap": 0,
+    "parent_train_val_overlap": 0,
+    "parent_train_test_overlap": 0,
+    "parent_val_test_overlap": 0,
+    "leakage_free": true
+  },
+  "split_counts": {
+    "train": {
+      "total": 420,
+      "by_class": {
+        "Non-Stone": 210,
+        "Stone": 210
+      },
+      "original_count": 420,
+      "augmented_count": 0,
+      "csv_path": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\data\\splits\\train.csv"
+    },
+    "val": {
+      "total": 90,
+      "by_class": {
+        "Non-Stone": 45,
+        "Stone": 45
+      },
+      "original_count": 90,
+      "augmented_count": 0,
+      "csv_path": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\data\\splits\\val.csv"
+    },
+    "test": {
+      "total": 90,
+      "by_class": {
+        "Non-Stone": 45,
+        "Stone": 45
+      },
+      "original_count": 90,
+      "augmented_count": 0,
+      "csv_path": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\data\\splits\\test.csv"
+    }
+  }
+}

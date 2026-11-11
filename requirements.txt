@@ -1,6 +1,9 @@
+
 # Core ML and Deep Learning
 torch>=2.2.0
 torchvision>=0.17.0
+ultralytics>=8.1.0
+pyyaml>=6.0
 
 # UI and Visualization
 streamlit>=1.32.0

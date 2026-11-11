@@ -1,0 +1,6 @@
+path: C:/Users/sheet/OneDrive/Desktop/kidney stone detection/Kidney-stone-detection/data/yolo_dataset
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: kidney_stone

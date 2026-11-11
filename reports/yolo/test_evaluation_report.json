@@ -1,0 +1,22 @@
+{
+  "model": "YOLOv8n",
+  "checkpoint": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\models\\detection\\best.pt",
+  "split_evaluated": "test",
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "mAP_50": 0.995,
+  "mAP_50_95": 0.9108,
+  "conf_threshold": 0.25,
+  "iou_threshold": 0.45,
+  "inference_latency_ms": {
+    "preprocess": 2.55,
+    "inference": 2.58,
+    "postprocess": 1.02,
+    "total_latency": 6.15
+  },
+  "training_duration_minutes": 3.32,
+  "sample_detections_count": 10,
+  "report_directory": "C:\\Users\\sheet\\OneDrive\\Desktop\\kidney stone detection\\Kidney-stone-detection\\reports\\yolo",
+  "timestamp": "2026-11-10T22:25:57"
+}
